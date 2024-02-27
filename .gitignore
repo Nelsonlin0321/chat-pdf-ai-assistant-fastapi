@@ -161,3 +161,4 @@ cython_debug/
 *.pdf
 
 docker.env
+notebooks/gcp-service-account-secret.json

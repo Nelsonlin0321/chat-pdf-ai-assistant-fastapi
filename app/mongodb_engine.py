@@ -1,4 +1,3 @@
-"""Mongodb Client"""
 import os
 from typing import Dict, List
 
@@ -13,15 +12,12 @@ if not MONGODB_URL:
     # pylint: disable=broad-exception-raised
     raise Exception("MONGODB_URL is not defined")
 
-DB_NAME = "CHATPDF"
+DB_NAME = ""
 EMBEDDING_COLLECTION = "DocumentEmbedding"
 DOCUMENT_COLLECTION = "Document"
 
 
 def normalized_score(df):
-    if len(df) == 0:
-        df['normalized_score'] = None
-        return df
     max_score = max(df['score'])
     min_score = min(df['score'])
     if (max_score-min_score) == 0:
@@ -41,16 +37,14 @@ def combine_vector_keyword_search(vector_search_results, keyword_search_results,
     if len(vector_search_results) == 0 and len(keyword_search_results) == 0:
         return []
 
-    df_keyword_search = pd.DataFrame(keyword_search_results)
-    df_vector_search = pd.DataFrame(vector_search_results)
-
     if len(vector_search_results) == 0:
-        results = df_keyword_search.to_dict(orient='records')
-        return results
+        return keyword_search_results
 
     if len(keyword_search_results) == 0:
-        results = df_vector_search.to_dict(orient='records')
-        return results
+        return vector_search_results
+
+    df_keyword_search = pd.DataFrame(keyword_search_results)
+    df_vector_search = pd.DataFrame(vector_search_results)
 
     both_hit_indices = set(df_vector_search[['textIdx']].merge(
         df_keyword_search[['textIdx']])['textIdx'])
@@ -64,11 +58,10 @@ def combine_vector_keyword_search(vector_search_results, keyword_search_results,
 
     df_hybrid_search_1 = df_keyword_search[df_keyword_search['textIdx'].isin(
         both_hit_indices)].copy()
-
     df_hybrid_search_1['both_hit'] = True
+
     df_hybrid_search_2 = df_hybrid_search[~df_hybrid_search['textIdx'].isin(
         both_hit_indices)].copy()
-
     df_hybrid_search_2 = df_hybrid_search_2.sort_values(
         by='normalized_score', ascending=False).head(rest_size)
     df_hybrid_search_2['both_hit'] = False
@@ -81,8 +74,6 @@ def combine_vector_keyword_search(vector_search_results, keyword_search_results,
 
 
 class MongoDB():
-    """_summary_
-    """
 
     def __init__(self) -> None:
         self.client = MongoClient(MONGODB_URL)
@@ -91,15 +82,15 @@ class MongoDB():
 
     def file_exist(self, file_name: str) -> bool:
         collection = self.db[DOCUMENT_COLLECTION]
-        results = collection.find_one({"fileName": file_name})
+        results = collection.find_one({"file_name": file_name})
         return results is not None
 
     def insert_document(self, file_name: str):
         # if not self.file_exist(file_name):
         collection = self.db[DOCUMENT_COLLECTION]
         collection.insert_one(
-            {'fileName': file_name,
-             "fileUrl": f"https://d2gewc5xha837s.cloudfront.net/rag-documents/{file_name}"})
+            {'file_name': file_name,
+             "file_key": f"https://d2gewc5xha837s.cloudfront.net/rag-documents/{file_name}"})
 
     def insert_embedding(self, doc_meta_list) -> List:
         # if not self.file_exist(file_name):
@@ -119,7 +110,7 @@ class MongoDB():
                     "numCandidates": limit,
                     "limit": limit,
 
-                    "filter": {"fileName": {"$eq": file_name}}
+                    "filter": {"file_name": {"$eq": file_name}}
                 }
 
             },
@@ -156,7 +147,7 @@ class MongoDB():
                             {
                                 'text': {
                                     'query': file_name,
-                                    'path': 'fileName'
+                                    'path': 'file_name'
                                 }
                             }
                         ]
@@ -164,7 +155,7 @@ class MongoDB():
                 }
             }, {
                 '$match': {
-                    'fileName': file_name
+                    'file_name': file_name
                 }
             }, {
                 '$addFields': {

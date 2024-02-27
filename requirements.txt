@@ -10,3 +10,4 @@ gunicorn==21.2.0
 pypdf==3.17.4
 boto3==1.34.23
 textblob==0.9.0
+google-cloud-aiplatform
