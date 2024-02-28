@@ -1,7 +1,13 @@
 from fastapi import APIRouter, File, UploadFile
+from app.pdf_parser import PDFParser
+from app.vertex_ai import TextEmbedding
+from app.config import config
 from app import utils
 import boto3
 import os
+
+
+gcp_secret = os.environ.get('GCP_SECRET')
 
 ROUTE_NAME = "v1"
 
@@ -14,21 +20,21 @@ router = APIRouter(
 s3 = boto3.client('s3')
 
 
-def upload_file_to_s3(file_path, object_name):
-    s3.upload_file(file_path, "cloudfront-aws-bucket",
-                   os.path.join("chinese-local-rag", object_name))
+def upload_file_to_s3(file_path, file_key):
+    s3.upload_file(file_path, config.s3_bucket,
+                   os.path.join(config.s3_root_dir, file_key))
+
+
+embedding_model = TextEmbedding(
+    secret=gcp_secret, batch_size=config.batch_size)
+pdf_parser = PDFParser(embedding_model=embedding_model,
+                       sentence_size=config.sentence_size,
+                       overlapping_num=config.overlapping_num)
 
 
 @router.post("/ingest_file")
-async def ingest_file(file: UploadFile = File(...)):
+async def ingest_file(file_key: str, file: UploadFile = File(...)):
     save_file_path = utils.save_file(file=file)
+    upload_file_to_s3(save_file_path, file_key)
 
-    upload_file_to_s3(save_file_path, os.path.basename(save_file_path))
-
-    message = chroma_engine.ingest_file(
-        file_path=save_file_path,
-        sentence_size=256,
-        overlapping_num=2,
-        overwrite=True)
-
-    return message
+    return {'message': 'File uploaded successfully'}

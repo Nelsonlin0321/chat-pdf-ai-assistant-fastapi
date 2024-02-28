@@ -2,8 +2,10 @@ import base64
 import os
 import pickle
 import json
+import shutil
+from uuid import uuid4
 
-TMP_DIR = "./temp"
+TMP_DIR = "/tmp"
 os.makedirs(TMP_DIR, exist_ok=True)
 
 
@@ -36,3 +38,13 @@ def encode_secret_dict(secret_dict):
 
 def decode_secret_dict(secret_dict_encoded):
     return json.loads(base64.b64decode(secret_dict_encoded.encode('utf-8')).decode('utf-8'))
+
+
+def save_file(file):
+    tmp_dir = str(uuid4())
+    file_path = f"{TMP_DIR}/{tmp_dir}/{file.filename}"
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    with open(file_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    return file_path
