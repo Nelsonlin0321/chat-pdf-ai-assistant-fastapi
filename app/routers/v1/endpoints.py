@@ -20,9 +20,9 @@ router = APIRouter(
 s3 = boto3.client('s3')
 
 
-def upload_file_to_s3(file_path, file_key):
-    s3.upload_file(file_path, config.s3_bucket,
-                   os.path.join(config.s3_root_dir, file_key))
+def upload_file_to_s3(file, file_key):
+    s3.upload_fileobj(file.file, config.s3_bucket,
+                      os.path.join(config.s3_root_dir, file_key))
 
 
 embedding_model = TextEmbedding(
@@ -34,7 +34,6 @@ pdf_parser = PDFParser(embedding_model=embedding_model,
 
 @router.post("/ingest_file")
 async def ingest_file(file_key: str = Form(...), file: UploadFile = File(...)):
-    save_file_path = utils.save_file(file=file)
-    upload_file_to_s3(save_file_path, file_key)
+    upload_file_to_s3(file, file_key)
 
     return {'message': 'File uploaded successfully'}
