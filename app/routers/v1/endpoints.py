@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile
+from fastapi import APIRouter, File, UploadFile, Form
 from app.pdf_parser import PDFParser
 from app.vertex_ai import TextEmbedding
 from app.config import config
@@ -33,7 +33,7 @@ pdf_parser = PDFParser(embedding_model=embedding_model,
 
 
 @router.post("/ingest_file")
-async def ingest_file(file_key: str, file: UploadFile = File(...)):
+async def ingest_file(file_key: str = Form(...), file: UploadFile = File(...)):
     save_file_path = utils.save_file(file=file)
     upload_file_to_s3(save_file_path, file_key)
 
