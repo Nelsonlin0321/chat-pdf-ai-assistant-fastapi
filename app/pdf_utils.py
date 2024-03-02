@@ -6,10 +6,11 @@ from textblob import TextBlob
 def parse_pdf(file_path):
 
     reader = PdfReader(file_path)
-
+    full_text = ""
     page_sentence_list = []
     for page_num, page in enumerate(reader.pages):
         text = page.extract_text().strip()
+        full_text += "\n"+text
         blob = TextBlob(text)
 
         for sentence in blob.sentences:
@@ -18,7 +19,7 @@ def parse_pdf(file_path):
             tmp_dict["sentence"] = sentence
             page_sentence_list.append(tmp_dict)
 
-    return page_sentence_list
+    return full_text, page_sentence_list
 
 
 def merge_sentences_to_chunks(page_sentence_list, sentence_size=128, overlapping_num=3):

@@ -2,7 +2,6 @@ import os
 from typing import Dict, List
 
 import dotenv
-import pandas as pd
 from pymongo import MongoClient
 
 dotenv.load_dotenv()
@@ -12,65 +11,9 @@ if not MONGODB_URL:
     # pylint: disable=broad-exception-raised
     raise Exception("MONGODB_URL is not defined")
 
-DB_NAME = ""
-EMBEDDING_COLLECTION = "DocumentEmbedding"
-DOCUMENT_COLLECTION = "Document"
-
-
-def normalized_score(df):
-    max_score = max(df['score'])
-    min_score = min(df['score'])
-    if (max_score-min_score) == 0:
-        df['normalized_score'] = df['score']
-    else:
-        df['normalized_score'] = df['score'].apply(
-            lambda x: (x-min_score)/(max_score-min_score))
-    return df
-
-
-columns = ["fileName", "textIdx", "pageLabel", "text", "score"]
-df_empty = pd.DataFrame(columns=columns)
-
-
-def combine_vector_keyword_search(vector_search_results, keyword_search_results, limit: int = 5):
-
-    if len(vector_search_results) == 0 and len(keyword_search_results) == 0:
-        return []
-
-    if len(vector_search_results) == 0:
-        return keyword_search_results
-
-    if len(keyword_search_results) == 0:
-        return vector_search_results
-
-    df_keyword_search = pd.DataFrame(keyword_search_results)
-    df_vector_search = pd.DataFrame(vector_search_results)
-
-    both_hit_indices = set(df_vector_search[['textIdx']].merge(
-        df_keyword_search[['textIdx']])['textIdx'])
-
-    rest_size = limit - len(both_hit_indices)
-
-    df_vector_search = normalized_score(df_vector_search)
-    df_keyword_search = normalized_score(df_keyword_search)
-
-    df_hybrid_search = pd.concat([df_keyword_search, df_vector_search])
-
-    df_hybrid_search_1 = df_keyword_search[df_keyword_search['textIdx'].isin(
-        both_hit_indices)].copy()
-    df_hybrid_search_1['both_hit'] = True
-
-    df_hybrid_search_2 = df_hybrid_search[~df_hybrid_search['textIdx'].isin(
-        both_hit_indices)].copy()
-    df_hybrid_search_2 = df_hybrid_search_2.sort_values(
-        by='normalized_score', ascending=False).head(rest_size)
-    df_hybrid_search_2['both_hit'] = False
-
-    df_hybrid_search = pd.concat([df_hybrid_search_1, df_hybrid_search_2])
-
-    results = df_hybrid_search.to_dict(orient='records')
-
-    return results
+DB_NAME = "RAG"
+FILE_COLLECTION = "UploadedFile"
+EMBEDDING_COLLECTION = "Embedding"
 
 
 class MongoDB():
@@ -81,24 +24,52 @@ class MongoDB():
         self.db = self.client[self.db_name]
 
     def file_exist(self, file_name: str) -> bool:
-        collection = self.db[DOCUMENT_COLLECTION]
+        collection = self.db[FILE_COLLECTION]
         results = collection.find_one({"file_name": file_name})
         return results is not None
 
-    def insert_document(self, file_name: str):
+    def insert_file(self, file_name: str, file_key, full_text: str) -> None:
         # if not self.file_exist(file_name):
-        collection = self.db[DOCUMENT_COLLECTION]
-        collection.insert_one(
-            {'file_name': file_name,
-             "file_key": f"https://d2gewc5xha837s.cloudfront.net/chatpdf/{file_name}"})
+        collection = self.db[FILE_COLLECTION]
 
-    def insert_embedding(self, doc_meta_list) -> List:
+        if file_key.startswith('/'):
+            file_key = file_key[1:]
+
+        result = collection.insert_one(
+            {'file_name': file_name,
+             'file_key': file_key,
+             "file_url": f"https://d2gewc5xha837s.cloudfront.net/{file_key}",
+             'full_text': full_text}
+        )
+        return result
+
+    def insert_embedding(self, embeddings) -> List:
         # if not self.file_exist(file_name):
         collection = self.db[EMBEDDING_COLLECTION]
-        collection.insert_many(doc_meta_list)
+        collection.insert_many(embeddings)
 
     def vector_search(self, query_vector: List[float],
-                      file_name: str, limit: int = 5) -> List[Dict]:
+                      file_key: str, limit: int = 5) -> List[Dict]:
+
+        # create a vector search index
+        # {
+        #   "fields": [
+        #     {
+        #       "numDimensions": 768,
+        #       "path": "embedding",
+        #       "similarity": "dotProduct",
+        #       "type": "vector"
+        #     },
+        #     {
+        #       "path": "file_key",
+        #       "type": "filter"
+        #     },
+        #     {
+        #       "path": "chat_id",
+        #       "type": "filter"
+        #     }
+        #   ]
+        # }
 
         results = self.db[EMBEDDING_COLLECTION].aggregate([
             {
@@ -109,8 +80,7 @@ class MongoDB():
                     "queryVector": query_vector,
                     "numCandidates": limit,
                     "limit": limit,
-
-                    "filter": {"file_name": {"$eq": file_name}}
+                    "filter": {"file_key": {"$eq": file_key}}
                 }
 
             },
@@ -119,6 +89,7 @@ class MongoDB():
                 '$project': {
                     'embedding': 0,
                     "_id": 0,
+                    'uploaded_file_id': 0,
                     "score": {"$meta": "vectorSearchScore"},
                 }
 
@@ -128,13 +99,21 @@ class MongoDB():
 
         return list(results)
 
-    def keyword_search(self, query: str, file_name: str, limit: int = 5) -> List[Dict]:
+    def keyword_search(self, query: str, file_key: str, limit: int = 5) -> List[Dict]:
 
         search_query = [
             {
                 '$search': {
                     'index': 'default',
                     'compound': {
+                        'filter': [
+                            {
+                                'text': {
+                                    'query': file_key,
+                                    'path': 'file_key'
+                                }
+                            }
+                        ],
                         'must': [
                             {
                                 'text': {
@@ -142,20 +121,8 @@ class MongoDB():
                                     'path': 'text'
                                 }
                             }
-                        ],
-                        'filter': [
-                            {
-                                'text': {
-                                    'query': file_name,
-                                    'path': 'file_name'
-                                }
-                            }
                         ]
                     }
-                }
-            }, {
-                '$match': {
-                    'file_name': file_name
                 }
             }, {
                 '$addFields': {
@@ -165,7 +132,9 @@ class MongoDB():
                 }
             }, {
                 '$project': {
-                    'embedding': 0
+                    'embedding': 0,
+                    "_id": 0,
+                    'uploaded_file_id': 0,
                 }
             }, {
                 '$limit': limit
@@ -175,18 +144,3 @@ class MongoDB():
         results = self.db[EMBEDDING_COLLECTION].aggregate(search_query)
 
         return list(results)
-
-    def hybrid_search(self, query_vector: List[float], query: str,
-                      file_name: str, limit: int = 5) -> List[Dict]:
-
-        vector_search_results = self.vector_search(query_vector=query_vector,
-                                                   file_name=file_name, limit=limit)
-
-        keyword_search_results = self.keyword_search(query=query,
-                                                     file_name=file_name,
-                                                     limit=limit)
-
-        hybrid_search_results = combine_vector_keyword_search(
-            vector_search_results, keyword_search_results, limit=limit)
-
-        return hybrid_search_results

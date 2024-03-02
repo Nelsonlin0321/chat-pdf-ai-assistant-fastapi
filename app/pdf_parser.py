@@ -11,8 +11,9 @@ class PDFParser():
         self.embedding_model = embedding_model
 
     def parse(self, file_path):
+
         file_name = os.path.basename(file_path)
-        page_sentence_list = pdf_utils.parse_pdf(file_path)
+        full_text, page_sentence_list = pdf_utils.parse_pdf(file_path)
 
         chunk_metas = pdf_utils.merge_sentences_to_chunks(
             page_sentence_list,
@@ -21,11 +22,17 @@ class PDFParser():
 
         chunks = []
         for metas in chunk_metas:
-            metas['file_name'] = file_name
             chunks.append(metas['text'])
 
         embeddings = self.embedding_model(sentences=chunks)
         for embedding, metas in zip(embeddings, chunk_metas):
             metas['embedding'] = embedding
 
-        return embedding
+        # {"text": str,
+        #  "page_number": List[int],
+        #  "word_size": int,
+        #  "chunk_id": int,
+        #  "embedding": List[List[float]]
+        #  }
+
+        return full_text, chunk_metas
