@@ -90,6 +90,8 @@ class MongoDB():
                     'embedding': 0,
                     "_id": 0,
                     'uploaded_file_id': 0,
+                    "chat_id": 0,
+                    "file_key": 0,
                     "score": {"$meta": "vectorSearchScore"},
                 }
 
@@ -135,12 +137,14 @@ class MongoDB():
                     'embedding': 0,
                     "_id": 0,
                     'uploaded_file_id': 0,
+                    "chat_id": 0,
+                    "file_key": 0,
                 }
             }, {
                 '$limit': limit
             }
         ]
 
-        results = self.db[EMBEDDING_COLLECTION].aggregate(search_query)
+        results = list(self.db[EMBEDDING_COLLECTION].aggregate(search_query))
 
-        return list(results)
+        return results

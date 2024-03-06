@@ -65,7 +65,7 @@ async def ingest_file(file_key: str = Form(...), chat_id: str = Form(...), file:
     return {"messages": "Ingested file successfully"}
 
 
-@router.post("/vector_search")
+@router.get("/vector_search")
 def vector_search(query: str, file_key: str, limit: int = 5):
     embedding = embedding_model([query])[0]
 
@@ -75,14 +75,15 @@ def vector_search(query: str, file_key: str, limit: int = 5):
     return results
 
 
-@router.post("/keyword_search")
+@router.get("/keyword_search")
 def keyword_search(query: str, file_key: str, limit: int = 5):
     results = mongo_db_engine.keyword_search(
         query=query, file_key=file_key, limit=limit)
+
     return results
 
 
-@router.post("/hybrid_search")
+@router.get("/hybrid_search")
 def hybrid_search(query: str, file_key: str, limit: int = 5):
     keyword_search_results = keyword_search(
         query=query, file_key=file_key, limit=limit)

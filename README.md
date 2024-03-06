@@ -8,7 +8,10 @@ source venv/bin/activate
 pip3 install -r requirements.txt
 
 source .env
-uvicorn app.server:app --reload-dir app --host 0.0.0.0 --port 8000
+uvicorn server:app --reload \
+                  --reload-dir ./app
+                  --host localhost
+                  --port 8000
 # or
 
 sh boot.sh
