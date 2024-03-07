@@ -1,5 +1,5 @@
-import pandas as pd
 import os
+import numpy as np
 import boto3
 from app import utils
 from app.config import config
@@ -72,28 +72,54 @@ async def ingest_file(file_key: str = Form(...), chat_id: str = Form(...), file:
     return {"messages": "Ingested file successfully"}
 
 
-# @router.get("/vector_search")
-# def vector_search(query: str, file_key: str, limit: int = 5):
+@router.get("/vector_search")
+def vector_search(query: str, file_key: str, limit: int = 5):
 
-#     embedding = jina_ai.get_embeddings([query])[0]
+    embedding = jina_ai.get_embeddings([query])[0]
 
-#     results = mongo_db_engine.vector_search(
-#         query_vector=embedding, file_key=file_key, limit=limit)
+    results = mongo_db_engine.vector_search(
+        query_vector=embedding, file_key=file_key, limit=limit)
 
-#     return results
-
-
-# @router.get("/keyword_search")
-# def keyword_search(query: str, file_key: str, limit: int = 5):
-#     results = mongo_db_engine.keyword_search(
-#         query=query, file_key=file_key, limit=limit)
-
-#     return results
+    return results
 
 
-# @router.get("/hybrid_search")
-# def hybrid_search(query: str, file_key: str, limit: int = 5):
-#     keyword_search_results = keyword_search(
-#         query=query, file_key=file_key, limit=limit)
-#     vector_search_results = vector_search(
-#         query=query, file_key=file_key, limit=limit)
+@router.get("/keyword_search")
+def keyword_search(query: str, file_key: str, limit: int = 5):
+    results = mongo_db_engine.keyword_search(
+        query=query, file_key=file_key, limit=limit)
+
+    return results
+
+
+@router.get("/hybrid_search")
+def hybrid_search(query: str, file_key: str, limit: int = 5):
+    keyword_search_results = keyword_search(
+        query=query, file_key=file_key, limit=limit)
+
+    vector_search_results = vector_search(
+        query=query, file_key=file_key, limit=limit)
+
+    deduplicated_search_result = deduplicate(vector_search_results,
+                                             keyword_search_results, id_field='chunk_id')
+
+    chunks = [item["text"] for item in deduplicated_search_result]
+
+    reranked_indics = jina_ai.rerank(query=query, chunks=chunks, top_n=limit)
+
+    reranked_results = np.array(deduplicated_search_result)[reranked_indics]
+
+    return reranked_results
+
+
+def deduplicate(search_results_1, search_results_2, id_field):
+
+    deduplicated = search_results_1.copy()
+
+    search_ids = set([item[id_field]
+                      for item in search_results_1])
+
+    for item in search_results_2:
+        if item[id_field] not in search_ids:
+            deduplicated.append(item)
+
+    return deduplicated
