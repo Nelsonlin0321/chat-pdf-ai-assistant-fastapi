@@ -5,7 +5,7 @@ import os
 
 
 class PDFParser():
-    def __init__(self, sentence_size=128, overlapping_num=3) -> None:
+    def __init__(self, sentence_size=256, overlapping_num=3) -> None:
         self.sentence_size = sentence_size
         self.overlapping_num = overlapping_num
 

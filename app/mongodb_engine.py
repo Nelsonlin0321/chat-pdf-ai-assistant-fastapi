@@ -39,7 +39,7 @@ class MongoDB():
         collection.insert_many(embeddings)
 
     def vector_search(self, query_vector: List[float],
-                      file_key: str, limit: int = 5) -> List[Dict]:
+                      chat_id: str, limit: int = 5) -> List[Dict]:
 
         # create a vector search index
         # {
@@ -70,7 +70,7 @@ class MongoDB():
                     "queryVector": query_vector,
                     "numCandidates": limit,
                     "limit": limit,
-                    "filter": {"file_key": {"$eq": file_key}}
+                    "filter": {"chat_id": {"$eq": chat_id}}
                 }
 
             },
@@ -79,9 +79,10 @@ class MongoDB():
                 '$project': {
                     'embedding': 0,
                     "_id": 0,
-                    'uploaded_file_id': 0,
                     "chat_id": 0,
+                    "word_size": 0,
                     "file_key": 0,
+                    "file_name": 0,
                     "score": {"$meta": "vectorSearchScore"},
                 }
 
@@ -91,7 +92,34 @@ class MongoDB():
 
         return list(results)
 
-    def keyword_search(self, query: str, file_key: str, limit: int = 5) -> List[Dict]:
+    def keyword_search(self, query: str, chat_id: str, limit: int = 5) -> List[Dict]:
+        """
+        [
+        {
+            $search: {
+            index: "default",
+            compound: {
+                filter: [
+                {
+                    equals: {
+                    value: "6c718ece-1949-4db8-865c-54743e05f6cd",
+                    path: "chat_id"
+                    }
+                }
+                ],
+                should: [
+                {
+                    text: {
+                    query: "How much is the range of Inflation Protected ?",
+                    path: "text"
+                    }
+                }
+                ]
+            }
+            }
+        }
+        ]
+        """
 
         search_query = [
             {
@@ -101,8 +129,8 @@ class MongoDB():
                         'filter': [
                             {
                                 'text': {
-                                    'query': file_key,
-                                    'path': 'file_key'
+                                    'query': chat_id,
+                                    'path': 'chat_id'
                                 }
                             }
                         ],
@@ -126,9 +154,10 @@ class MongoDB():
                 '$project': {
                     'embedding': 0,
                     "_id": 0,
-                    'uploaded_file_id': 0,
+                    "word_size": 0,
                     "chat_id": 0,
                     "file_key": 0,
+                    "file_name": 0,
                 }
             }, {
                 '$limit': limit

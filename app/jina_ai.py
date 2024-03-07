@@ -39,4 +39,7 @@ class JinaAI():
         reranked_indices = [item["index"]
                             for item in response.json()['results']]
 
-        return reranked_indices
+        relevance_scores = [item["relevance_score"]
+                            for item in response.json()['results']]
+
+        return reranked_indices, relevance_scores

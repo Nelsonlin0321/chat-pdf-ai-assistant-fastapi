@@ -73,40 +73,45 @@ async def ingest_file(file_key: str = Form(...), chat_id: str = Form(...), file:
 
 
 @router.get("/vector_search")
-def vector_search(query: str, file_key: str, limit: int = 5):
+def vector_search(query: str, chat_id: str, limit: int = 5):
 
     embedding = jina_ai.get_embeddings([query])[0]
 
     results = mongo_db_engine.vector_search(
-        query_vector=embedding, file_key=file_key, limit=limit)
+        query_vector=embedding, chat_id=chat_id, limit=limit)
 
     return results
 
 
 @router.get("/keyword_search")
-def keyword_search(query: str, file_key: str, limit: int = 5):
+def keyword_search(query: str, chat_id: str, limit: int = 5):
     results = mongo_db_engine.keyword_search(
-        query=query, file_key=file_key, limit=limit)
+        query=query, chat_id=chat_id, limit=limit)
 
     return results
 
 
 @router.get("/hybrid_search")
-def hybrid_search(query: str, file_key: str, limit: int = 5):
+def hybrid_search(query: str, chat_id: str, limit: int = 5):
     keyword_search_results = keyword_search(
-        query=query, file_key=file_key, limit=limit)
+        query=query, chat_id=chat_id, limit=limit)
 
     vector_search_results = vector_search(
-        query=query, file_key=file_key, limit=limit)
+        query=query, chat_id=chat_id, limit=limit)
 
     deduplicated_search_result = deduplicate(vector_search_results,
                                              keyword_search_results, id_field='chunk_id')
 
     chunks = [item["text"] for item in deduplicated_search_result]
 
-    reranked_indics = jina_ai.rerank(query=query, chunks=chunks, top_n=limit)
+    reranked_indics, relevance_scores = jina_ai.rerank(
+        query=query, chunks=chunks, top_n=limit)
 
-    reranked_results = np.array(deduplicated_search_result)[reranked_indics]
+    reranked_results = np.array(deduplicated_search_result)[
+        reranked_indics].tolist()
+
+    for score, item in zip(relevance_scores, reranked_results):
+        item["score"] = score
 
     return reranked_results
 
