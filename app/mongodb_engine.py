@@ -1,15 +1,5 @@
-import os
 from typing import Dict, List
-
-import dotenv
 from pymongo import MongoClient
-
-dotenv.load_dotenv()
-
-MONGODB_URL = os.getenv("MONGODB_URL")
-if not MONGODB_URL:
-    # pylint: disable=broad-exception-raised
-    raise Exception("MONGODB_URL is not defined")
 
 DB_NAME = "RAG"
 FILE_COLLECTION = "UploadedFile"
@@ -18,8 +8,8 @@ EMBEDDING_COLLECTION = "Embedding"
 
 class MongoDB():
 
-    def __init__(self) -> None:
-        self.client = MongoClient(MONGODB_URL)
+    def __init__(self, mongodb_url) -> None:
+        self.client = MongoClient(mongodb_url)
         self.db_name = DB_NAME
         self.db = self.client[self.db_name]
 
