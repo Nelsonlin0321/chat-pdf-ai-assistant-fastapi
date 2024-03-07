@@ -6,8 +6,10 @@ from app.config import config
 from app.jina_ai import JinaAI
 from app.mongodb_engine import MongoDB
 from app.pdf_parser import PDFParser
-from fastapi import APIRouter, File, UploadFile, Form
+from fastapi import APIRouter, File, Request, UploadFile, Form
 import dotenv
+
+from app.routers.v1.payload import DeleteFilePayLoad
 dotenv.load_dotenv()
 
 
@@ -73,7 +75,7 @@ async def ingest_file(file_key: str = Form(...), chat_id: str = Form(...), file:
 
 
 @router.get("/vector_search")
-def vector_search(query: str, chat_id: str, limit: int = 5):
+async def vector_search(query: str, chat_id: str, limit: int = 5):
 
     embedding = jina_ai.get_embeddings([query])[0]
 
@@ -84,7 +86,7 @@ def vector_search(query: str, chat_id: str, limit: int = 5):
 
 
 @router.get("/keyword_search")
-def keyword_search(query: str, chat_id: str, limit: int = 5):
+async def keyword_search(query: str, chat_id: str, limit: int = 5):
     results = mongo_db_engine.keyword_search(
         query=query, chat_id=chat_id, limit=limit)
 
@@ -92,7 +94,7 @@ def keyword_search(query: str, chat_id: str, limit: int = 5):
 
 
 @router.get("/hybrid_search")
-def hybrid_search(query: str, chat_id: str, limit: int = 5):
+async def hybrid_search(query: str, chat_id: str, limit: int = 5):
     keyword_search_results = keyword_search(
         query=query, chat_id=chat_id, limit=limit)
 
@@ -114,6 +116,18 @@ def hybrid_search(query: str, chat_id: str, limit: int = 5):
         item["score"] = score
 
     return reranked_results
+
+
+@router.delete("/delete_file")
+async def delete_file(payload: DeleteFilePayLoad):
+    file_key = payload.file_key
+
+    s3.delete_object(
+        Bucket=config.s3_bucket,
+        Key=file_key
+    )
+
+    return {"message": "File deleted successfully"}
 
 
 def deduplicate(search_results_1, search_results_2, id_field):
