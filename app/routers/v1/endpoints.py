@@ -6,7 +6,7 @@ from app.config import config
 from app.jina_ai import JinaAI
 from app.mongodb_engine import MongoDB
 from app.pdf_parser import PDFParser
-from fastapi import APIRouter, File, Request, UploadFile, Form
+from fastapi import APIRouter, File, UploadFile, Form
 import dotenv
 
 from app.routers.v1.payload import DeleteFilePayLoad
@@ -95,10 +95,10 @@ async def keyword_search(query: str, chat_id: str, limit: int = 5):
 
 @router.get("/hybrid_search")
 async def hybrid_search(query: str, chat_id: str, limit: int = 5):
-    keyword_search_results = keyword_search(
+    keyword_search_results = await keyword_search(
         query=query, chat_id=chat_id, limit=limit)
 
-    vector_search_results = vector_search(
+    vector_search_results = await vector_search(
         query=query, chat_id=chat_id, limit=limit)
 
     deduplicated_search_result = deduplicate(vector_search_results,
