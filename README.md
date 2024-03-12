@@ -20,7 +20,7 @@ sh boot.sh
 ## Build Docker
 ```shell
 image_name=rag-backend-api
-docker build -t ${image_name}:latest -f ./Dockerfile . --platform linux/arm64/v8
+docker build -t ${image_name}:latest -f ./Dockerfile .
 docker run --env-file docker.env -p 8000:8000 -it --rm --name ${image_name} ${image_name}:latest
 ```
 ## API Description and RAG Pipeline
@@ -32,7 +32,7 @@ docker run --env-file docker.env -p 8000:8000 -it --rm --name ${image_name} ${im
 
 ```shell
 image_name=rag-backend-api
-docker build -t ${image_name}:latest . --platform linux/arm64/v8
+docker build -t ${image_name}:latest .
 ```
 
 docker.env
@@ -52,7 +52,7 @@ docker run --env-file docker.env -p 8000:8000 -it ${image_name}:latest
 ## Build AWS Lambda FastAPI Container
 ```shell
 image_name=lambda-rag-backend-api
-docker build -t ${image_name}:latest -f ./Dockerfile.aws.lambda  . --platform linux/arm64/v8
+docker build -t ${image_name}:latest -f ./Dockerfile.aws.lambda  .
 ```
 
 ## Test the Lambda
@@ -97,4 +97,12 @@ docker tag ${image_name}:latest ${account_id}.dkr.ecr.${region}.amazonaws.com/${
 
 ```shell
 docker push ${account_id}.dkr.ecr.ap-southeast-1.amazonaws.com/${repo_name}:latest
+```
+
+## Deploy To AWS with Infra Codes:
+
+```shell
+cd ./infra
+terraform init
+terraform apply
 ```
