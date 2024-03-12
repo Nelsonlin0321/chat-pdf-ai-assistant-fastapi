@@ -23,27 +23,78 @@ image_name=rag-backend-api
 docker build -t ${image_name}:latest -f ./Dockerfile . --platform linux/arm64/v8
 docker run --env-file docker.env -p 8000:8000 -it --rm --name ${image_name} ${image_name}:latest
 ```
-## API Description and RAg Pipeline
+## API Description and RAG Pipeline
 
-<img src="images/RAG-Pipeline.png">
+<img src="images/openAPI.png">
 
-<img src="images/OpenAPI.png">
 
-###  Process and Ingest PDF file  
-`/api/ingest`
+## Run Recommender API Using Docker
 
-The process of reading a PDF, making chunks, encoding sentences to embeddings, and loading them into a vector search database follows a structured workflow to ensure efficient and accurate retrieval of information. 
+```shell
+image_name=rag-backend-api
+docker build -t ${image_name}:latest . --platform linux/arm64/v8
+```
 
-### Retrieve Augmented Generate (RAG):
- `/api/retrieval_generate` 
+docker.env
+```shell
+MONGODB_URL=
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+JINA_API_KEY=
+```
+```shell
+image_name=rag-backend-api
+docker run --env-file docker.env -p 8000:8000 -it ${image_name}:latest
+```
 
-Provide answers to user queries based on the previously ingested PDF document. Encoding user query to search to performs a vector search by comparing the query vector, based on retrieved content, generate result by using prompt and the user's question passed to the OpenAI GPT-3.5 Turbo model.
 
-Example:
-```json
-{
-  "context": "Asset allocation with a duration",
-  "question": "Given the criteria, if the percentage of the portfolio with a duration longer than 7 years is less than 20%, answer me Yes or No, does this document satisfy this criteria?",
-  "file_name": "SUNY RF - General Investment Policy and Guidelines.pdf"
-}
+
+## Build AWS Lambda FastAPI Container
+```shell
+image_name=lambda-rag-backend-api
+docker build -t ${image_name}:latest -f ./Dockerfile.aws.lambda  . --platform linux/arm64/v8
+```
+
+## Test the Lambda
+```shell
+image_name=lambda-rag-backend-api
+docker run --env-file docker.env -p 9000:8080 --name lambda-rag-backend-api -it --rm ${image_name}:latest
+```
+
+
+```shell
+curl -XPOST "http://localhost:9000/2015-03-31/functions/function/invocations" -d '{
+    "resource": "/api/health_check",
+    "path": "/api/health_check",
+    "httpMethod": "GET",
+    "requestContext": {
+    },
+    "isBase64Encoded": false
+}'
+```
+
+## Push To ECR
+
+```shell
+source .env
+account_id=932682266260
+region=ap-southeast-1
+image_name=lambda-rag-backend-api
+repo_name=${image_name}
+aws ecr get-login-password --region ${region} | docker login --username AWS --password-stdin ${account_id}.dkr.ecr.${region}.amazonaws.com
+```
+
+
+```shell
+aws ecr create-repository \
+    --repository-name ${repo_name} \
+    --region ${region}
+```
+
+```shell
+docker tag ${image_name}:latest ${account_id}.dkr.ecr.${region}.amazonaws.com/${repo_name}:latest
+```
+
+```shell
+docker push ${account_id}.dkr.ecr.ap-southeast-1.amazonaws.com/${repo_name}:latest
 ```

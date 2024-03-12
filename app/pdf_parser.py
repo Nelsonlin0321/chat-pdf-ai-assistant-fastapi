@@ -1,14 +1,13 @@
 
 from . import pdf_utils
-from .vertex_ai import TextEmbedding
+# from .vertex_ai import TextEmbedding
 import os
 
 
 class PDFParser():
-    def __init__(self, embedding_model: TextEmbedding, sentence_size=128, overlapping_num=3) -> None:
+    def __init__(self, sentence_size=256, overlapping_num=3) -> None:
         self.sentence_size = sentence_size
         self.overlapping_num = overlapping_num
-        self.embedding_model = embedding_model
 
     def parse(self, file_path):
 
@@ -20,13 +19,16 @@ class PDFParser():
             sentence_size=self.sentence_size,
             overlapping_num=self.overlapping_num)
 
-        chunks = []
         for metas in chunk_metas:
-            chunks.append(metas['text'])
+            metas["file_name"] = file_name
 
-        embeddings = self.embedding_model(sentences=chunks)
-        for embedding, metas in zip(embeddings, chunk_metas):
-            metas['embedding'] = embedding
+        # chunks = []
+        # for metas in chunk_metas:
+        #     chunks.append(metas['text'])
+
+        # embeddings = self.embedding_model(sentences=chunks)
+        # for embedding, metas in zip(embeddings, chunk_metas):
+        #     metas['embedding'] = embedding
 
         # {"text": str,
         #  "page_number": List[int],

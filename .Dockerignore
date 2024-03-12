@@ -1,6 +1,7 @@
 .env
 docker.env
 notebooks
+documents
 venv
 __pycache__
 temp
