@@ -1,5 +1,5 @@
 import dotenv
-from datetime import datetime
+import datetime
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -29,14 +29,15 @@ app.include_router(v1.endpoints.router, prefix=PREFIX)
 
 
 DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
-start_time = datetime.utcnow()
+start_time = now_hk = datetime.datetime.now(
+    datetime.timezone(datetime.timedelta(hours=8)))
 start_time = start_time.strftime(DATE_FORMAT)
 
 
 @app.get(f"{PREFIX}/health_check")
 async def health_check():
     response = f"The server is up since {start_time}"
-    return {"message": response, "start_uct_time": start_time}
+    return {"message": response, "start_hk_time": start_time}
 
 
 handler = Mangum(app)
