@@ -1,10 +1,13 @@
 from pypdf import PdfReader
 from textblob import TextBlob
+import nltk
+nltk_download_dir = "/tmp/nltk_data"
+nltk.data.path.append(nltk_download_dir)
 
 
 def parse_pdf(file_path):
-    import nltk
-    nltk.download('punkt')
+
+    nltk.download('punkt', download_dir=nltk_download_dir)
 
     reader = PdfReader(file_path)
     full_text = ""
