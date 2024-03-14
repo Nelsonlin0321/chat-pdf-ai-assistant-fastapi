@@ -1,6 +1,7 @@
-import os
 from pypdf import PdfReader
 from textblob import TextBlob
+import nltk
+nltk.download('punkt')
 
 
 def parse_pdf(file_path):
