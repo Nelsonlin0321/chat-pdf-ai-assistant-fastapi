@@ -8,6 +8,7 @@ from app.mongodb_engine import MongoDB
 from app.pdf_parser import PDFParser
 from fastapi import APIRouter, File, UploadFile, Form
 import dotenv
+import datetime
 
 from app.routers.v1.payload import DeleteFilePayLoad
 dotenv.load_dotenv()
@@ -142,3 +143,15 @@ def deduplicate(search_results_1, search_results_2, id_field):
             deduplicated.append(item)
 
     return deduplicated
+
+
+DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
+start_time = now_hk = datetime.datetime.now(
+    datetime.timezone(datetime.timedelta(hours=8)))
+start_time = start_time.strftime(DATE_FORMAT)
+
+
+@router.get(f"/health_check")
+async def health_check():
+    response = f"The server is up since {start_time}"
+    return {"message": response, "start_hk_time": start_time}
