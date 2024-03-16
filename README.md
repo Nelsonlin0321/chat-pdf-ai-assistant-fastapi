@@ -1,4 +1,36 @@
-# FastAPI PDF Retrieval Augmented Generation (RAG)
+# FastAPI PDF Retrieval Augmented Generation (RAG) APIs
+
+## Introduction
+The FastAPI server acts as the main backend API for full stack Chat PDF AI Assistant.
+
+## Highlights:
+- The custom "Read & Chunk" component to preprocessing PDF files, splitting pages to sentence and them merge them into chunks for embedding and indexing.
+- MongoDB to perform vector similarity and keyword search operations on the database for ingested vector 
+- It uses the Jina framework for embedding text data and reranking for retrieval data.
+- The "api/hybrid_search" route handles hybrid search queries, combining traditional text search (BM25) with vector similarity search with Jina AI reranking.
+
+## Preview
+
+[`www.chat-pdf-ai.com`](www.chat-pdf-ai.com)
+
+
+## Overall Architecture
+
+Frontend Github:  https://github.com/Nelsonlin0321/chat-pdf-ai-assistant
+
+<img src = "images/architecture.png">
+
+## Details about PDF ingestion
+
+- The PDF file is first split into individual pages using a PDF PyPDF.
+- Each page is then processed using a textblob library to convert the page content into sentences.
+- The sentences from each page are merged into larger chunks with overlapping text between consecutive chunks. This overlapping helps maintain context during search and retrieval.
+- The chunked text data is then passed through an embedding pipeline using the Jina Embedding API. This step converts the textual data into high-dimensional vector representations.
+- The resulting vector embeddings, along with their corresponding text chunks, are ingested and stored in a vector database like MongoDB.
+- The original PDF file also is uploaded to an S3 storage service for front display.
+
+
+<img src = "images/ingest_file.png">
 
 ## Run Backend API Locally
 
@@ -23,7 +55,7 @@ image_name=rag-backend-api
 docker build -t ${image_name}:latest -f ./Dockerfile .
 docker run --env-file docker.env -p 8000:8000 -it --rm --name ${image_name} ${image_name}:latest
 ```
-## API Description and RAG Pipeline
+## APIs Description
 
 <img src="images/openAPI.png">
 
